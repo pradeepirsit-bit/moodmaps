@@ -62,11 +62,11 @@
         .cool-sparkle { position: absolute; width: 4px; height: 4px; background: rgba(16, 185, 129, 0.9); border-radius: 50%; box-shadow: 0 0 8px rgba(16, 185, 129, 1); animation: floatUp 3s infinite ease-in-out; }
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 50% { opacity: 1; transform: translateY(-20px) scale(1.2); } 100% { transform: translateY(-40px) scale(0.5); opacity: 0; } }
 
-        /* 4. NEW Blue: Monsoon Rain */
+        /* 4. Blue: Monsoon Rain */
         .rain-drop { position: absolute; width: 2px; height: 25px; background: linear-gradient(to bottom, transparent, rgba(59, 130, 246, 0.9)); border-radius: 2px; animation: rainFall 0.6s linear infinite; }
         @keyframes rainFall { 0% { transform: translateY(-50px); opacity: 0; } 30% { opacity: 1; } 100% { transform: translateY(50px); opacity: 0; } }
 
-        /* 5. NEW Purple: Electric Lightning */
+        /* 5. Purple: Electric Lightning */
         .lightning-spark { position: absolute; width: 3px; height: 40px; background: #a855f7; box-shadow: 0 0 15px #a855f7, 0 0 30px #c084fc; transform-origin: center; animation: zap 2s infinite; border-radius: 50%; }
         @keyframes zap { 0%, 90% { opacity: 0; transform: scale(0.5) rotate(45deg); } 92% { opacity: 1; transform: scale(1.5) rotate(25deg) translateX(15px); } 94% { opacity: 0; } 96% { opacity: 1; transform: scale(1.2) rotate(65deg) translateX(-15px); } 100% { opacity: 0; } }
     </style>
@@ -97,12 +97,12 @@
     </div>
 
     <!-- Floating Map Instructions & Check-in Button -->
-    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-20 w-[90%] max-w-xs pointer-events-none">
-        <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm whitespace-nowrap">
-            👆 Tap anywhere on the map to drop a pin
+    <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-20 w-[95%] max-w-sm pointer-events-none">
+        <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm text-center">
+            👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Pop (Remove)
         </p>
         <button id="open-drawer-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-[0_0_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 transition-all pointer-events-auto">
-            📍 Or Type Location
+            📍 Manual Type Location
         </button>
     </div>
 
@@ -145,7 +145,6 @@
                 </div>
             </button>
 
-            <!-- NEW EMOTIONS -->
             <button class="mood-submit-btn flex items-center gap-3 w-full bg-blue-50 dark:bg-blue-950/30 hover:bg-blue-100 dark:hover:bg-blue-900/40 border border-blue-200 dark:border-blue-900/50 p-3 rounded-xl text-left transition-colors relative overflow-hidden group" data-color="bg-blue-500" data-text="Total Damage">
                 <span class="text-xl relative z-10">🔵</span>
                 <div class="relative z-10">
@@ -197,6 +196,7 @@
         const locationInput = document.getElementById("user-location-input");
         const drawerTitle = document.getElementById("drawer-title");
 
+        // Map Single Click -> Pick new location
         map.on('click', function(e) {
             pendingClickCoords = [e.latlng.lat, e.latlng.lng];
             activeMarkerBeingEdited = null; 
@@ -217,7 +217,7 @@
                     const endCoords = activeNodesList[i + 1].coords;
                     const moodColor = activeNodesList[i + 1].color;
 
-                    let lineColor = '#10b981'; // Green default
+                    let lineColor = '#10b981'; 
                     if (moodColor.includes('red')) lineColor = '#ef4444';
                     if (moodColor.includes('amber')) lineColor = '#f59e0b';
                     if (moodColor.includes('blue')) lineColor = '#3b82f6';
@@ -313,17 +313,15 @@
                 textColor = "text-emerald-600 dark:text-emerald-400";
                 weatherAnimations = `<div class="weather-container"><div class="smooth-pulse" style="animation-delay: 0s;"></div><div class="cool-sparkle" style="left: 20%; top: 40%; animation-delay: 0s;"></div><div class="cool-sparkle" style="left: 70%; top: 60%; animation-delay: 1.5s;"></div></div>`;
             } else if(colorClass.includes("blue")) {
-                // NEW: Monsoon Downpour
                 textColor = "text-blue-600 dark:text-blue-400";
                 weatherAnimations = `<div class="weather-container"><div class="rain-drop" style="left: 30%; animation-delay: 0s;"></div><div class="rain-drop" style="left: 50%; animation-delay: 0.2s; height: 15px;"></div><div class="rain-drop" style="left: 70%; animation-delay: 0.4s;"></div><div class="rain-drop" style="left: 40%; animation-delay: 0.1s; height: 35px;"></div><div class="rain-drop" style="left: 80%; animation-delay: 0.5s;"></div></div>`;
             } else if(colorClass.includes("purple")) {
-                // NEW: Lightning Sparks
                 textColor = "text-purple-600 dark:text-purple-400";
                 weatherAnimations = `<div class="weather-container"><div class="lightning-spark" style="left: 25%; top: 10%; animation-delay: 0s;"></div><div class="lightning-spark" style="right: 25%; top: 30%; animation-delay: 0.8s;"></div><div class="lightning-spark" style="left: 50%; bottom: 10%; animation-delay: 1.2s; height: 20px;"></div></div>`;
             }
 
             const markerHTML = `
-                <div class="relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-transform duration-300" style="width: 120px; height: 120px;">
+                <div class="node-container relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-300" style="width: 120px; height: 120px;">
                     ${weatherAnimations}
                     <div class="mood-glow-orb absolute inset-0 m-auto w-12 h-12 ${colorClass}"></div>
                     <div class="relative bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-2xl backdrop-blur-md z-10 whitespace-nowrap group hover:border-slate-400 dark:hover:border-slate-500 transition-colors">
@@ -336,13 +334,49 @@
             const customIcon = L.divIcon({ className: 'custom-mood-marker', html: markerHTML, iconSize: [0, 0] });
             const newMarker = L.marker(coords, { icon: customIcon }).addTo(map);
 
+            // Click Logic: Distinguish Single Tap (Edit) vs Double Tap (Pop/Remove)
+            let clickTimeout;
+            
+            // Single Tap Event (Edit)
             newMarker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
-                activeMarkerBeingEdited = newMarker;
-                pendingClickCoords = coords; 
-                drawerTitle.innerText = `Edit Vibe: ${cityName}`;
-                locationInput.value = cityName;
-                drawer.classList.remove("translate-y-full");
+                clearTimeout(clickTimeout);
+                
+                clickTimeout = setTimeout(() => {
+                    activeMarkerBeingEdited = newMarker;
+                    pendingClickCoords = coords; 
+                    drawerTitle.innerText = `Edit Vibe: ${cityName}`;
+                    locationInput.value = cityName;
+                    drawer.classList.remove("translate-y-full");
+                }, 250); // Small delay to wait and see if user taps a second time
+            });
+
+            // Double Tap Event (Pop / Stop / Delete)
+            newMarker.on('dblclick', (e) => {
+                L.DomEvent.stopPropagation(e);
+                clearTimeout(clickTimeout); // Cancel the single-click edit action
+
+                // Visually pop (shrink) the node before removing
+                const domElement = newMarker.getElement().querySelector('.node-container');
+                if (domElement) {
+                    domElement.style.transform = 'translate(-50%, -50%) scale(0)';
+                    domElement.style.opacity = '0';
+                }
+
+                // Safely remove after animation completes
+                setTimeout(() => {
+                    map.removeLayer(newMarker);
+                    activeNodesList = activeNodesList.filter(node => node.marker !== newMarker);
+                    activePinCount--;
+                    document.getElementById("active-count").innerText = `${activePinCount} Nodes Active`;
+                    updateTrafficTelemetry();
+                    
+                    // If they happened to double tap while the drawer was open for this node, close it
+                    if (activeMarkerBeingEdited === newMarker) {
+                        drawer.classList.add("translate-y-full");
+                        activeMarkerBeingEdited = null;
+                    }
+                }, 300);
             });
 
             activeNodesList.push({ marker: newMarker, coords: coords, color: colorClass });
