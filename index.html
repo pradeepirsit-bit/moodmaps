@@ -81,9 +81,15 @@
             <h1 class="text-sm font-bold tracking-wide text-slate-800 dark:text-slate-300 uppercase flex items-center gap-2">
                 TN Mood Map <span class="text-xs bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 border border-blue-200 dark:border-blue-500/30 px-2 py-0.5 rounded-md normal-case font-normal">Live Map</span>
             </h1>
-            <p class="text-[11px] text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mt-0.5 font-mono">
-                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span> GPS Telemetry Active
-            </p>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono flex items-center gap-1.5">
+                    <span class="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span> Telemetry Active
+                </span>
+                <!-- NEW: Funny Anonymous Name Badge Display -->
+                <span class="text-[10px] bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-2.5 py-0.5 rounded-full font-bold border border-slate-300 dark:border-slate-700 shadow-sm">
+                    👤 <span id="user-display-name">Loading...</span>
+                </span>
+            </div>
         </div>
         
         <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
@@ -98,11 +104,10 @@
 
     <!-- Floating Map Instructions & Check-in Button -->
     <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-20 w-[95%] max-w-sm pointer-events-none">
-        <!-- Temporary Toast Notification for permissions -->
         <div id="toast-msg" class="opacity-0 transition-opacity duration-300 text-[11px] font-bold text-white bg-red-500 px-4 py-2 rounded-full shadow-lg absolute -top-12 whitespace-nowrap">You can only edit your own pins!</div>
         
         <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm text-center">
-            👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Delete
+            👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Pop (Remove)
         </p>
         <button id="open-drawer-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-[0_0_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 transition-all pointer-events-auto">
             📍 Manual Type Location
@@ -128,6 +133,7 @@
                 <span class="text-xl relative z-10">🔴</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-red-800 dark:text-red-200">Semma Tension (Stressed)</p>
+                    <p class="text-[10px] text-red-600 dark:text-red-400/70">Generates heat wave anomalies</p>
                 </div>
             </button>
 
@@ -135,6 +141,7 @@
                 <span class="text-xl relative z-10">🟡</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-amber-800 dark:text-amber-200">Chill / Polaama (Moderate)</p>
+                    <p class="text-[10px] text-amber-600 dark:text-amber-400/70">Summons monsoonal wind patterns</p>
                 </div>
             </button>
 
@@ -142,6 +149,7 @@
                 <span class="text-xl relative z-10">🟢</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Smooth Vibe (Focused)</p>
+                    <p class="text-[10px] text-emerald-600 dark:text-emerald-400/70">Projects a cool, stable aura</p>
                 </div>
             </button>
 
@@ -149,6 +157,7 @@
                 <span class="text-xl relative z-10">🔵</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">Total Damage (Exhausted)</p>
+                    <p class="text-[10px] text-blue-600 dark:text-blue-400/70">Triggers a heavy downpour</p>
                 </div>
             </button>
 
@@ -156,6 +165,7 @@
                 <span class="text-xl relative z-10">🟣</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-purple-800 dark:text-purple-200">Verithanam (Hyped/Mass)</p>
+                    <p class="text-[10px] text-purple-600 dark:text-purple-400/70">Strikes with electric lightning</p>
                 </div>
             </button>
 
@@ -166,17 +176,33 @@
 
     <script>
         // ==========================================
-        // 1. SILENT AUTHENTICATION & LOCAL STORAGE
+        // 1. SILENT FUNNY NAME GENERATOR & AUTH
         // ==========================================
         function getAnonymousUser() {
             let userId = localStorage.getItem("mood_map_anon_id");
-            if (!userId) {
+            let userName = localStorage.getItem("mood_map_anon_name");
+            
+            if (!userId || !userName) {
                 userId = 'anon_' + Math.random().toString(36).substr(2, 9) + Date.now();
+                
+                // Fun Tamil/English Slang combinations
+                const adjectives = ["Murattu", "Sleepy", "Savage", "Gethu", "VeraLevel", "Local", "Cosmic", "Thug", "Chill", "Silent", "Vibe", "Smart", "Crazy"];
+                const nouns = ["Singam", "Panda", "Ninja", "Kuruvi", "Don", "Boss", "Thalaivan", "Gamer", "Hacker", "Viper", "Ghost", "Cheetah", "Machan"];
+                
+                userName = adjectives[Math.floor(Math.random() * adjectives.length)] + " " + nouns[Math.floor(Math.random() * nouns.length)];
+                
                 localStorage.setItem("mood_map_anon_id", userId);
+                localStorage.setItem("mood_map_anon_name", userName);
             }
-            return userId;
+            return { id: userId, name: userName };
         }
-        const myUserId = getAnonymousUser();
+        
+        const currentUser = getAnonymousUser();
+        const myUserId = currentUser.id;
+        const myUserName = currentUser.name;
+
+        // Display the user's funny name in the top dashboard
+        document.getElementById("user-display-name").innerText = myUserName;
 
         // Save only OUR pins to the local storage so they persist on refresh
         function saveLocalPins() {
@@ -288,14 +314,15 @@
         // 4. BOOTLOADER (Seed Data + Saved Data)
         // ==========================================
         window.addEventListener("DOMContentLoaded", () => {
-            // Seed "Other People's" Pins (Using dummy system IDs)
-            dropPin("Chennai", "bg-red-500", "Semma Tension", tnGeography["chennai"], "system_user_1", true);
-            dropPin("Madurai", "bg-blue-500", "Total Damage", tnGeography["madurai"], "system_user_2", true);
+            // Seed "Other People's" Pins with their own funny names
+            dropPin("Chennai", "bg-red-500", "Semma Tension", tnGeography["chennai"], "system_user_1", "Chill Don", true);
+            dropPin("Madurai", "bg-blue-500", "Total Damage", tnGeography["madurai"], "system_user_2", "Savage Kuruvi", true);
+            dropPin("Coimbatore", "bg-emerald-500", "Smooth Vibe", tnGeography["coimbatore"], "system_user_3", "Gethu Thalaivan", true);
 
             // Fetch and render "My Pins" from local storage
             const mySavedPins = JSON.parse(localStorage.getItem("mood_map_my_pins") || "[]");
             mySavedPins.forEach(pin => {
-                dropPin(pin.cityName, pin.colorClass, pin.statusText, pin.coords, myUserId, true);
+                dropPin(pin.cityName, pin.colorClass, pin.statusText, pin.coords, myUserId, myUserName, true);
             });
         });
 
@@ -337,8 +364,8 @@
                     activeMarkerBeingEdited = null; 
                 }
 
-                // Submitting a new/edited pin attaches OUR unique Silent ID to it
-                dropPin(targetCity, chosenColor, chosenStatusText, pendingClickCoords, myUserId);
+                // Submitting a new/edited pin attaches OUR unique Silent ID & Name to it
+                dropPin(targetCity, chosenColor, chosenStatusText, pendingClickCoords, myUserId, myUserName);
                 
                 drawer.classList.add("translate-y-full");
                 locationInput.value = "";
@@ -347,9 +374,9 @@
         });
 
         // ==========================================
-        // 6. CORE PIN ENGINE (With Ownership Guard)
+        // 6. CORE PIN ENGINE (With Ownership & Smart Tap)
         // ==========================================
-        function dropPin(cityName, colorClass, statusText, exactCoords = null, ownerId = myUserId, isInitialization = false) {
+        function dropPin(cityName, colorClass, statusText, exactCoords = null, ownerId = myUserId, ownerName = myUserName, isInitialization = false) {
             const normalizedKey = cityName.toLowerCase().replace(/[^a-z]/g, "");
             let coords = exactCoords ? exactCoords : (tnGeography[normalizedKey] ? [tnGeography[normalizedKey][0] + (Math.random()-0.5)*0.05, tnGeography[normalizedKey][1] + (Math.random()-0.5)*0.05] : [8.5 + Math.random()*4.5, 76.5 + Math.random()*3.5]);
 
@@ -373,17 +400,19 @@
                 weatherAnimations = `<div class="weather-container"><div class="lightning-spark" style="left: 25%; top: 10%; animation-delay: 0s;"></div><div class="lightning-spark" style="right: 25%; top: 30%; animation-delay: 0.8s;"></div><div class="lightning-spark" style="left: 50%; bottom: 10%; animation-delay: 1.2s; height: 20px;"></div></div>`;
             }
 
-            // Visual indicator so the user knows which pin belongs to them
-            const ownershipBadge = (ownerId === myUserId) 
+            // Badge styling depends on ownership
+            const badgeHTML = (ownerId === myUserId) 
                 ? `<div class="absolute -top-3 -right-3 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">YOU</div>` 
                 : '';
 
             const markerHTML = `
-                <div class="node-container relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-300" style="width: 120px; height: 120px;">
+                <div class="node-container relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-300" style="width: 130px; height: 130px;">
                     ${weatherAnimations}
                     <div class="mood-glow-orb absolute inset-0 m-auto w-12 h-12 ${colorClass}"></div>
                     <div class="relative bg-white/95 dark:bg-slate-900/95 border ${ownerId === myUserId ? 'border-blue-500/50' : 'border-slate-200 dark:border-slate-700'} px-3 py-1.5 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-2xl backdrop-blur-md z-10 whitespace-nowrap group transition-colors">
-                        ${ownershipBadge}
+                        ${badgeHTML}
+                        <!-- Automatically generated user name tagged above city -->
+                        <p class="text-[8px] text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-0.5 text-center">${ownerName}</p>
                         <p class="text-[11px] font-bold text-slate-800 dark:text-slate-100 capitalize text-center tracking-wide">${cityName}</p>
                         <p class="text-[9px] ${textColor} font-mono mt-0.5 text-center font-semibold">${statusText}</p>
                     </div>
