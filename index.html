@@ -7,7 +7,7 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a">
     <title>TN Mood Map - Live Real Map Edition</title>
     
-    <!-- PWA Manifest & Service Worker Injection -->
+    <!-- PWA Manifest & Service Worker -->
     <link rel="manifest" id="pwa-manifest">
     <script>
         const manifest = {
@@ -91,15 +91,18 @@
                 🛣️ <span id="traffic-btn-text">Show Live Traffic</span>
             </button>
             <span id="active-count" class="text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 px-3 py-2 rounded-xl text-slate-600 dark:text-slate-400 font-mono shadow-inner transition-colors">
-                0 Nodes Active
+                0 Nodes
             </span>
         </div>
     </div>
 
     <!-- Floating Map Instructions & Check-in Button -->
     <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-20 w-[95%] max-w-sm pointer-events-none">
+        <!-- Temporary Toast Notification for permissions -->
+        <div id="toast-msg" class="opacity-0 transition-opacity duration-300 text-[11px] font-bold text-white bg-red-500 px-4 py-2 rounded-full shadow-lg absolute -top-12 whitespace-nowrap">You can only edit your own pins!</div>
+        
         <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm text-center">
-            👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Pop (Remove)
+            👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Delete
         </p>
         <button id="open-drawer-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-[0_0_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 transition-all pointer-events-auto">
             📍 Manual Type Location
@@ -125,7 +128,6 @@
                 <span class="text-xl relative z-10">🔴</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-red-800 dark:text-red-200">Semma Tension (Stressed)</p>
-                    <p class="text-[10px] text-red-600 dark:text-red-400/70">Generates heat wave anomalies</p>
                 </div>
             </button>
 
@@ -133,7 +135,6 @@
                 <span class="text-xl relative z-10">🟡</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-amber-800 dark:text-amber-200">Chill / Polaama (Moderate)</p>
-                    <p class="text-[10px] text-amber-600 dark:text-amber-400/70">Summons monsoonal wind patterns</p>
                 </div>
             </button>
 
@@ -141,7 +142,6 @@
                 <span class="text-xl relative z-10">🟢</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-emerald-800 dark:text-emerald-200">Smooth Vibe (Focused)</p>
-                    <p class="text-[10px] text-emerald-600 dark:text-emerald-400/70">Projects a cool, stable aura</p>
                 </div>
             </button>
 
@@ -149,7 +149,6 @@
                 <span class="text-xl relative z-10">🔵</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-blue-800 dark:text-blue-200">Total Damage (Exhausted)</p>
-                    <p class="text-[10px] text-blue-600 dark:text-blue-400/70">Triggers a heavy downpour</p>
                 </div>
             </button>
 
@@ -157,7 +156,6 @@
                 <span class="text-xl relative z-10">🟣</span>
                 <div class="relative z-10">
                     <p class="text-sm font-semibold text-purple-800 dark:text-purple-200">Verithanam (Hyped/Mass)</p>
-                    <p class="text-[10px] text-purple-600 dark:text-purple-400/70">Strikes with electric lightning</p>
                 </div>
             </button>
 
@@ -167,6 +165,41 @@
     </div>
 
     <script>
+        // ==========================================
+        // 1. SILENT AUTHENTICATION & LOCAL STORAGE
+        // ==========================================
+        function getAnonymousUser() {
+            let userId = localStorage.getItem("mood_map_anon_id");
+            if (!userId) {
+                userId = 'anon_' + Math.random().toString(36).substr(2, 9) + Date.now();
+                localStorage.setItem("mood_map_anon_id", userId);
+            }
+            return userId;
+        }
+        const myUserId = getAnonymousUser();
+
+        // Save only OUR pins to the local storage so they persist on refresh
+        function saveLocalPins() {
+            const myPins = activeNodesList
+                .filter(node => node.ownerId === myUserId)
+                .map(node => ({
+                    cityName: node.cityName,
+                    colorClass: node.colorClass,
+                    statusText: node.statusText,
+                    coords: node.coords
+                }));
+            localStorage.setItem("mood_map_my_pins", JSON.stringify(myPins));
+        }
+
+        function showToast() {
+            const toast = document.getElementById("toast-msg");
+            toast.classList.remove("opacity-0");
+            setTimeout(() => toast.classList.add("opacity-0"), 3000);
+        }
+
+        // ==========================================
+        // 2. INITIALIZE MAP & THEMES
+        // ==========================================
         const map = L.map('real-map').setView([10.7905, 78.7047], 7);
         let currentTileLayer = null;
 
@@ -207,6 +240,9 @@
             locationInput.focus();
         });
 
+        // ==========================================
+        // 3. LIVE TRAFFIC TELEMETRY
+        // ==========================================
         const trafficLines = L.featureGroup();
 
         function updateTrafficTelemetry() {
@@ -215,7 +251,7 @@
                 for (let i = 0; i < activeNodesList.length - 1; i++) {
                     const startCoords = activeNodesList[i].coords;
                     const endCoords = activeNodesList[i + 1].coords;
-                    const moodColor = activeNodesList[i + 1].color;
+                    const moodColor = activeNodesList[i + 1].colorClass;
 
                     let lineColor = '#10b981'; 
                     if (moodColor.includes('red')) lineColor = '#ef4444';
@@ -248,12 +284,24 @@
             }
         });
 
+        // ==========================================
+        // 4. BOOTLOADER (Seed Data + Saved Data)
+        // ==========================================
         window.addEventListener("DOMContentLoaded", () => {
-            dropPin("Chennai", "bg-red-500", "Semma Tension", tnGeography["chennai"]);
-            dropPin("Coimbatore", "bg-purple-500", "Verithanam", tnGeography["coimbatore"]);
-            dropPin("Madurai", "bg-blue-500", "Total Damage", tnGeography["madurai"]);
+            // Seed "Other People's" Pins (Using dummy system IDs)
+            dropPin("Chennai", "bg-red-500", "Semma Tension", tnGeography["chennai"], "system_user_1", true);
+            dropPin("Madurai", "bg-blue-500", "Total Damage", tnGeography["madurai"], "system_user_2", true);
+
+            // Fetch and render "My Pins" from local storage
+            const mySavedPins = JSON.parse(localStorage.getItem("mood_map_my_pins") || "[]");
+            mySavedPins.forEach(pin => {
+                dropPin(pin.cityName, pin.colorClass, pin.statusText, pin.coords, myUserId, true);
+            });
         });
 
+        // ==========================================
+        // 5. UI CONTROLS & PIN SUBMISSION
+        // ==========================================
         document.getElementById("open-drawer-btn").addEventListener("click", () => {
             activeMarkerBeingEdited = null; 
             pendingClickCoords = null; 
@@ -289,14 +337,19 @@
                     activeMarkerBeingEdited = null; 
                 }
 
-                dropPin(targetCity, chosenColor, chosenStatusText, pendingClickCoords);
+                // Submitting a new/edited pin attaches OUR unique Silent ID to it
+                dropPin(targetCity, chosenColor, chosenStatusText, pendingClickCoords, myUserId);
+                
                 drawer.classList.add("translate-y-full");
                 locationInput.value = "";
                 pendingClickCoords = null;
             });
         });
 
-        function dropPin(cityName, colorClass, statusText, exactCoords = null) {
+        // ==========================================
+        // 6. CORE PIN ENGINE (With Ownership Guard)
+        // ==========================================
+        function dropPin(cityName, colorClass, statusText, exactCoords = null, ownerId = myUserId, isInitialization = false) {
             const normalizedKey = cityName.toLowerCase().replace(/[^a-z]/g, "");
             let coords = exactCoords ? exactCoords : (tnGeography[normalizedKey] ? [tnGeography[normalizedKey][0] + (Math.random()-0.5)*0.05, tnGeography[normalizedKey][1] + (Math.random()-0.5)*0.05] : [8.5 + Math.random()*4.5, 76.5 + Math.random()*3.5]);
 
@@ -320,11 +373,17 @@
                 weatherAnimations = `<div class="weather-container"><div class="lightning-spark" style="left: 25%; top: 10%; animation-delay: 0s;"></div><div class="lightning-spark" style="right: 25%; top: 30%; animation-delay: 0.8s;"></div><div class="lightning-spark" style="left: 50%; bottom: 10%; animation-delay: 1.2s; height: 20px;"></div></div>`;
             }
 
+            // Visual indicator so the user knows which pin belongs to them
+            const ownershipBadge = (ownerId === myUserId) 
+                ? `<div class="absolute -top-3 -right-3 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">YOU</div>` 
+                : '';
+
             const markerHTML = `
                 <div class="node-container relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-300" style="width: 120px; height: 120px;">
                     ${weatherAnimations}
                     <div class="mood-glow-orb absolute inset-0 m-auto w-12 h-12 ${colorClass}"></div>
-                    <div class="relative bg-white/95 dark:bg-slate-900/95 border border-slate-200 dark:border-slate-700 px-3 py-1.5 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-2xl backdrop-blur-md z-10 whitespace-nowrap group hover:border-slate-400 dark:hover:border-slate-500 transition-colors">
+                    <div class="relative bg-white/95 dark:bg-slate-900/95 border ${ownerId === myUserId ? 'border-blue-500/50' : 'border-slate-200 dark:border-slate-700'} px-3 py-1.5 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-2xl backdrop-blur-md z-10 whitespace-nowrap group transition-colors">
+                        ${ownershipBadge}
                         <p class="text-[11px] font-bold text-slate-800 dark:text-slate-100 capitalize text-center tracking-wide">${cityName}</p>
                         <p class="text-[9px] ${textColor} font-mono mt-0.5 text-center font-semibold">${statusText}</p>
                     </div>
@@ -334,44 +393,47 @@
             const customIcon = L.divIcon({ className: 'custom-mood-marker', html: markerHTML, iconSize: [0, 0] });
             const newMarker = L.marker(coords, { icon: customIcon }).addTo(map);
 
-            // Click Logic: Distinguish Single Tap (Edit) vs Double Tap (Pop/Remove)
             let clickTimeout;
             
-            // Single Tap Event (Edit)
+            // Single Tap Event (Edit - Only if it's YOUR pin)
             newMarker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
+                if (ownerId !== myUserId) {
+                    showToast();
+                    return;
+                }
+
                 clearTimeout(clickTimeout);
-                
                 clickTimeout = setTimeout(() => {
                     activeMarkerBeingEdited = newMarker;
                     pendingClickCoords = coords; 
                     drawerTitle.innerText = `Edit Vibe: ${cityName}`;
                     locationInput.value = cityName;
                     drawer.classList.remove("translate-y-full");
-                }, 250); // Small delay to wait and see if user taps a second time
+                }, 250);
             });
 
-            // Double Tap Event (Pop / Stop / Delete)
+            // Double Tap Event (Pop / Delete - Only if it's YOUR pin)
             newMarker.on('dblclick', (e) => {
                 L.DomEvent.stopPropagation(e);
-                clearTimeout(clickTimeout); // Cancel the single-click edit action
+                if (ownerId !== myUserId) return; // Silent rejection for double tap
 
-                // Visually pop (shrink) the node before removing
+                clearTimeout(clickTimeout); 
+
                 const domElement = newMarker.getElement().querySelector('.node-container');
                 if (domElement) {
                     domElement.style.transform = 'translate(-50%, -50%) scale(0)';
                     domElement.style.opacity = '0';
                 }
 
-                // Safely remove after animation completes
                 setTimeout(() => {
                     map.removeLayer(newMarker);
                     activeNodesList = activeNodesList.filter(node => node.marker !== newMarker);
                     activePinCount--;
                     document.getElementById("active-count").innerText = `${activePinCount} Nodes Active`;
                     updateTrafficTelemetry();
+                    saveLocalPins(); // Update memory after deletion
                     
-                    // If they happened to double tap while the drawer was open for this node, close it
                     if (activeMarkerBeingEdited === newMarker) {
                         drawer.classList.add("translate-y-full");
                         activeMarkerBeingEdited = null;
@@ -379,8 +441,12 @@
                 }, 300);
             });
 
-            activeNodesList.push({ marker: newMarker, coords: coords, color: colorClass });
+            activeNodesList.push({ marker: newMarker, coords: coords, colorClass: colorClass, cityName: cityName, statusText: statusText, ownerId: ownerId });
             updateTrafficTelemetry();
+            
+            // Save to memory unless we are just booting up
+            if (!isInitialization) saveLocalPins();
+            
             map.flyTo(coords, 8, { duration: 1.5 });
             activePinCount++;
             document.getElementById("active-count").innerText = `${activePinCount} Nodes Active`;
