@@ -7,6 +7,7 @@
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0f172a">
     <title>TN Mood Map - Live Community Pulse</title>
     
+    <!-- PWA Manifest & Service Worker -->
     <link rel="manifest" id="pwa-manifest">
     <script>
         const manifest = {
@@ -24,12 +25,18 @@
         }
     </script>
 
+    <!-- Tailwind CSS -->
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
     
+    <!-- Leaflet JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <style>
+        :root {
+            --node-scale: 1; /* Dynamically updated via JS when zooming */
+        }
+
         .leaflet-control-zoom { display: none !important; }
         
         .mood-glow-orb { border-radius: 50%; filter: blur(15px); opacity: 0.7; transition: all 0.8s ease-in-out; animation: pulse 3s infinite alternate; }
@@ -39,6 +46,19 @@
         @keyframes dash { to { stroke-dashoffset: -1000; } }
 
         .custom-mood-marker { background: transparent; border: none; }
+
+        /* Dynamic Node Scaling to prevent clutter on zoom out */
+        .node-container {
+            width: 100%;
+            height: 100%;
+            transform: scale(var(--node-scale));
+            transform-origin: center center;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+        .node-container:hover {
+            transform: scale(calc(var(--node-scale) + 0.1));
+            z-index: 1000;
+        }
 
         /* Weather Micro-Climates Container */
         .weather-container { position: absolute; inset: -40px; pointer-events: none; z-index: 0; overflow: visible; }
@@ -72,6 +92,7 @@
 
     <div id="real-map" class="absolute inset-0 w-full h-full z-0 cursor-crosshair"></div>
 
+    <!-- Top Dashboard -->
     <div class="absolute top-4 left-4 right-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-800 p-4 rounded-2xl z-20 shadow-xl flex flex-col sm:flex-row justify-between gap-3 items-start sm:items-center max-w-3xl mx-auto transition-colors duration-300">
         <div>
             <h1 class="text-sm font-bold tracking-wide text-slate-800 dark:text-slate-300 uppercase flex items-center gap-2">
@@ -97,10 +118,11 @@
         </div>
     </div>
 
+    <!-- Floating Map Instructions & Check-in Button -->
     <div class="absolute bottom-8 left-1/2 transform -translate-x-1/2 flex flex-col items-center gap-2 z-20 w-[95%] max-w-sm pointer-events-none">
         <div id="toast-msg" class="opacity-0 transition-opacity duration-300 text-[11px] font-bold text-white bg-red-500 px-4 py-2 rounded-full shadow-lg absolute -top-12 whitespace-nowrap">You can only edit your own pins!</div>
         
-        <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm text-center">
+        <p class="text-[10px] text-slate-700 dark:text-slate-300 bg-white/90 dark:bg-slate-900/90 px-3 py-1 rounded-full backdrop-blur-sm border border-slate-300 dark:border-slate-800 shadow-sm text-center shadow-[0_5px_15px_rgba(0,0,0,0.15)]">
             👆 Map: Tap to Add | Node: 1-Tap Edit | 2-Tap Pop (Remove)
         </p>
         <button id="open-drawer-btn" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-[0_0_25px_rgba(37,99,235,0.4)] flex items-center justify-center gap-2 transition-all pointer-events-auto">
@@ -108,6 +130,7 @@
         </button>
     </div>
 
+    <!-- Bottom Check-in Drawer -->
     <div id="checkin-drawer" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 rounded-t-3xl p-6 z-30 transition-all duration-500 transform translate-y-full shadow-[0_-10px_40px_rgba(0,0,0,0.1)] dark:shadow-2xl max-w-md mx-auto h-[85vh] overflow-y-auto">
         <div class="w-12 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-5"></div>
         
@@ -214,7 +237,7 @@
         }
 
         // ==========================================
-        // 2. INITIALIZE MAP & THEMES
+        // 2. INITIALIZE MAP, THEMES & ZOOM SCALING
         // ==========================================
         const map = L.map('real-map').setView([10.7905, 78.7047], 7);
         let currentTileLayer = null;
@@ -228,6 +251,17 @@
         const darkModeQuery = window.matchMedia('(prefers-color-scheme: dark)');
         darkModeQuery.addEventListener('change', updateMapTheme);
         updateMapTheme(darkModeQuery); 
+
+        // Dynamic Zoom Scaler: Shrinks nodes when zooming out to prevent clutter
+        function updateNodeScaling() {
+            const z = map.getZoom();
+            let scale = 1;
+            if (z === 6) scale = 0.8;
+            if (z <= 5) scale = 0.6;
+            document.documentElement.style.setProperty('--node-scale', scale);
+        }
+        map.on('zoomend', updateNodeScaling);
+        updateNodeScaling(); // Init run
 
         const tnGeography = {
             "chennai": [13.0827, 80.2707], "vellore": [12.9165, 79.1325], "salem": [11.6643, 78.1460],
@@ -245,7 +279,7 @@
         const locationInput = document.getElementById("user-location-input");
         const drawerTitle = document.getElementById("drawer-title");
 
-        // Map Single Click -> Pick new location
+        // Map Single Click -> Pick new location exactly where tapped
         map.on('click', function(e) {
             pendingClickCoords = [e.latlng.lat, e.latlng.lng];
             activeMarkerBeingEdited = null; 
@@ -358,7 +392,7 @@
         });
 
         // ==========================================
-        // 6. CORE PIN ENGINE
+        // 6. CORE PIN ENGINE (With Anchor Fix & Pop Logic)
         // ==========================================
         function dropPin(cityName, colorClass, statusText, exactCoords = null, ownerId = myUserId, ownerName = myUserName, isInitialization = false) {
             const normalizedKey = cityName.toLowerCase().replace(/[^a-z]/g, "");
@@ -388,8 +422,10 @@
                 ? `<div class="absolute -top-3 -right-3 bg-blue-600 text-white text-[9px] font-bold px-2 py-0.5 rounded-full z-20 shadow-md">YOU</div>` 
                 : '';
 
+            // FIXED: Removed CSS translate transforms that break Leaflet coordinates on zoom.
+            // Using w-full h-full to fill the exact Leaflet icon boundary.
             const markerHTML = `
-                <div class="node-container relative flex items-center justify-center transform -translate-x-1/2 -translate-y-1/2 cursor-pointer hover:scale-110 transition-all duration-300" style="width: 130px; height: 130px;">
+                <div class="node-container relative flex items-center justify-center cursor-pointer transition-all duration-300">
                     ${weatherAnimations}
                     <div class="mood-glow-orb absolute inset-0 m-auto w-12 h-12 ${colorClass}"></div>
                     <div class="relative bg-white/95 dark:bg-slate-900/95 border ${ownerId === myUserId ? 'border-blue-500/50' : 'border-slate-200 dark:border-slate-700'} px-3 py-1.5 rounded-xl shadow-[0_5px_15px_rgba(0,0,0,0.1)] dark:shadow-2xl backdrop-blur-md z-10 whitespace-nowrap group transition-colors">
@@ -401,11 +437,19 @@
                 </div>
             `;
 
-            const customIcon = L.divIcon({ className: 'custom-mood-marker', html: markerHTML, iconSize: [0, 0] });
+            // FIXED: Used iconAnchor to strictly pin the 130px container to the GPS point. Prevents drifting.
+            const customIcon = L.divIcon({ 
+                className: 'custom-mood-marker', 
+                html: markerHTML, 
+                iconSize: [130, 130],
+                iconAnchor: [65, 65]
+            });
+            
             const newMarker = L.marker(coords, { icon: customIcon }).addTo(map);
 
             let clickTimeout;
             
+            // 1-Tap (Edit)
             newMarker.on('click', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (ownerId !== myUserId) { showToast(); return; }
@@ -420,6 +464,7 @@
                 }, 250);
             });
 
+            // 2-Tap (Pop/Delete)
             newMarker.on('dblclick', (e) => {
                 L.DomEvent.stopPropagation(e);
                 if (ownerId !== myUserId) return; 
@@ -428,7 +473,7 @@
 
                 const domElement = newMarker.getElement().querySelector('.node-container');
                 if (domElement) {
-                    domElement.style.transform = 'translate(-50%, -50%) scale(0)';
+                    domElement.style.transform = 'scale(0)';
                     domElement.style.opacity = '0';
                 }
 
@@ -436,7 +481,7 @@
                     map.removeLayer(newMarker);
                     activeNodesList = activeNodesList.filter(node => node.marker !== newMarker);
                     activePinCount--;
-                    document.getElementById("active-count").innerText = `${activePinCount} Nodes Active`;
+                    document.getElementById("active-count").innerText = `${activePinCount} Nodes`;
                     updateTrafficTelemetry();
                     saveLocalPins(); 
                     
@@ -454,7 +499,7 @@
             
             map.flyTo(coords, 8, { duration: 1.5 });
             activePinCount++;
-            document.getElementById("active-count").innerText = `${activePinCount} Nodes Active`;
+            document.getElementById("active-count").innerText = `${activePinCount} Nodes`;
         }
     </script>
 </body>
